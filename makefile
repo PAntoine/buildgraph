@@ -1,16 +1,20 @@
-OBJECTS= build_graph.obj bg_utilities.obj bg_constants.obj bg_output.obj
+OBJECTS=build_graph.o bg_utilities.o bg_constants.o bg_output.o
 
-all: buildgraph.exe buildgraph.lib 
+$(info -- $(OBJECTS))
+
+all: buildgraph buildgraph.a 
 
 clean: 
-	@del *.lib *.exe *.obj 
+	@$(RM) *.lib buildgraph.exe *.o 
 
-buildgraph.exe : $(OBJECTS) 
-	@link /DEBUG /NOLOGO /out:buildgraph.exe $** ws2_32.lib
+buildgraph : $(OBJECTS) 
+	@echo $*
+	@$(CC) -o buildgraph $* $(OBJECTS)
 
-buildgraph.lib: bg_utilities.obj
-	@lib /NOLOGO /out:buildgraph.lib bg_utilities.obj
+buildgraph.a: bg_utilities.o
+	@$(AR) -r buildgraph.a bg_utilities.o
 
-$(OBJECTS): $*.c build_graph.h
-	cl /nologo /Zi /c $*.c 
+$(OBJECTS): build_graph.h
+	@echo --- $*
+	$(CC) -c $*.c 
 

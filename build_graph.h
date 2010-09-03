@@ -19,7 +19,7 @@
 #ifndef  __BUILD_GRAPH_H__
 #define  __BUILD_GRAPH_H__
 
-#define	__BG_VERSION__ "0.3"
+#define	__BG_VERSION__ "0.4"
 #define	ALPHABET_SIZE	(256)
 
 /*-----------------------------------------------------------------------------*

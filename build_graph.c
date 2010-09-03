@@ -33,6 +33,7 @@
  *                                 unsigned char constants. Need to force the 
  *                                 arrays and check value to signed or the table
  *                                 just does not work.
+ * P.Antoine   04/09/2010 0.5      Minor tweaks to the code. Also, std make file.
  *-----------------------------------------------------------------------------}}}*
  * Peter Antoine - 9th March 2009.
  * Copyright 2009 (c) Peter Antoine.
@@ -60,11 +61,12 @@
  *-----------------------------------------------------------------------------*/
 unsigned char look_uptable[ALPHABET_SIZE];
 
-main(int argc,char *argv[])
+int	main(int argc,char *argv[])
 {
 	int	item = 1;
 	int start = 1;
 	int failed = 0;
+	int result = 0;
 	int infile;
 	int num_symbols = 0;
 	int ignore_case = 0;
@@ -115,14 +117,12 @@ main(int argc,char *argv[])
 					case 'p':	/* enum prefix */
 							if (argv[start][2] != '\0')
 							{
-								printf("goodbye: %s\n",argv[start]);
 								enum_prefix = &argv[start][2];
 								enum_pre_size = strlen(&argv[start][2]);
 							}
 							else if (((start + 1) < argc) && argv[start+1][0] != '-')
 							{
 								start++;
-								printf("Heelo: %s\n",argv[start]);
 								enum_prefix = argv[start];
 								enum_pre_size = strlen(argv[start]);
 							}
@@ -170,13 +170,11 @@ main(int argc,char *argv[])
 
 			if (file_size == 0)
 			{
-				printf("I think the file is empty, so exiting.");
+				printf("I think the file is empty, so exiting.\n");
 				failed = 1;
 			}
 		}
 	}
-
-	printf("%s\n",enum_prefix);
 
 	if (!failed)
 	{
@@ -226,48 +224,53 @@ main(int argc,char *argv[])
 		printf("Usage:  %s <filename> [<output_name>] [-i] [-u] [-p <some_string>]\n",argv[0]);
 		printf("           -i     The look-up will ignore the case of the word input.\n\n");
 		printf("           -u     The uncompressed table will be exported.\n\n");
-		printf("           -p     The TST_ for the enum name will be replaced with <some_string>.\n\n");
-		exit(1);
+		printf("           -p     The \"TST_\" for the enum name will be replaced with <some_string>.\n\n");
+
+		result = 1;
 	}
-
-	memset((char*)&head_node,0,sizeof(N_NODE));
-
-	build_naive_tree(&head_node,word,word_size,num_of_words);
-
-	item = prune_tree(&head_node,word,word_size,num_of_words);
-
-	table = (char*) malloc((item+1) * 255);
-	memset(table,0,((item+1)*255));
-
-	generate_naive_table(table,&head_node,word,word_size,num_of_words);
-
-	if (!uncompressed_table)
+	else
 	{
-		num_symbols = compress_table(table,look_uptable,&compressed_table,item,word,word_size,num_of_words,ignore_case);
-	}
+		memset((char*)&head_node,0,sizeof(N_NODE));
 
-	if (uncompressed_table)
-	{
-		if (ignore_case)
+		build_naive_tree(&head_node,word,word_size,num_of_words);
+
+		item = prune_tree(&head_node,word,word_size,num_of_words);
+
+		table = (char*) malloc((item+1) * 255);
+		memset(table,0,((item+1)*255));
+
+		generate_naive_table(table,&head_node,word,word_size,num_of_words);
+
+		if (!uncompressed_table)
 		{
-			decase_table(table,item,ALPHABET_SIZE);
+			num_symbols = compress_table(table,look_uptable,&compressed_table,item,word,word_size,num_of_words,ignore_case);
 		}
-		build_output(output_name,enum_prefix,table,look_uptable,item,ALPHABET_SIZE,word,word_size,num_of_words,ignore_case,uncompressed_table);
-	}else{
-		build_output(output_name,enum_prefix,compressed_table,look_uptable,item,num_symbols,word,word_size,num_of_words,ignore_case,uncompressed_table);
+
+		if (uncompressed_table)
+		{
+			if (ignore_case)
+			{
+				decase_table(table,item,ALPHABET_SIZE);
+			}
+			build_output(output_name,enum_prefix,table,look_uptable,item,ALPHABET_SIZE,word,word_size,num_of_words,ignore_case,uncompressed_table);
+		}else{
+			build_output(output_name,enum_prefix,compressed_table,look_uptable,item,num_symbols,word,word_size,num_of_words,ignore_case,uncompressed_table);
+		}
+
+		/* release all the memory we have used */
+		free_tree(&head_node);
+
+		free(data);
+		free(word);
+		free(word_size);
+
+		if (compressed_table != NULL)
+		{
+			free(compressed_table);
+		}
 	}
 
-	/* release all the memory we have used */
-	free_tree(&head_node);
-
-	free(data);
-	free(word);
-	free(word_size);
-
-	if (compressed_table != NULL)
-	{
-		free(compressed_table);
-	}
+	return result;
 }
 
 /* vim: set fdm=marker: */
