@@ -1,0 +1,28 @@
+Build lookup graph
+==================
+
+This program will generate a look up graph for a set of words. 
+
+It will work out the search tree for the search of the input array the list
+of functions.
+
+The algorithm for generating the tree is not optimised. The prune and tree
+generation loops could be joined together.
+
+It also generates some code for searching the array. 
+
+PS: I know its a tree not a graph, but I thought that a graph was the 
+answer, then realised it was a world of pain for little memory saving
+so we now have a tree.
+
+
+
+Usage:
+------
+
+buildgraph <filename> [<output_name>] [-i] [-u] [-p <some_string>]
+           -i     The look-up will ignore the case of the word input.
+           -u     The uncompressed table will be exported.
+           -p     The \"TST_\" for the enum name will be replaced with <some_string>.
+
+
