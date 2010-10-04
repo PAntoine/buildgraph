@@ -345,6 +345,10 @@ void	build_output(	char* 			output_name,
 
 			write(out_file,string,size);
 		}
+			
+		/* put the MAX at the end of the list */
+		size = sprintf(string,",\n\t%sNUM_STRINGS",enum_prefix);
+		write(out_file,string,size);
 
 		size = sprintf(	string,"\n} %s%s;\n\n",enum_prefix,uppercase);
 		write(out_file,string,size);

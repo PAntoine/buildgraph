@@ -8,13 +8,11 @@ clean:
 	@$(RM) *.lib buildgraph.exe *.o 
 
 buildgraph : $(OBJECTS) 
-	@echo $*
 	@$(CC) -o buildgraph $* $(OBJECTS)
 
 buildgraph.a: bg_utilities.o
 	@$(AR) -r buildgraph.a bg_utilities.o
 
 .c.o: build_graph.h
-	@echo --- $* $%
-	$(CC) -c $*.c 
+	@$(CC) -c $*.c 
 
