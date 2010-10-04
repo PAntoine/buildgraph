@@ -24,7 +24,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <memory.h>
-
+#include <limits.h>
 #include "build_graph.h"
 
 /*-----------------------------------------------------------------------------*
@@ -52,6 +52,132 @@ extern unsigned int	case_compare_end_size;
 extern unsigned int	state_machine_table_size;
 extern unsigned int out_file_uncompfunc_size;
 
+
+/*---  FUNCTION  ----------------------------------------------------------------------*
+ *         Name:  output_table
+ *  Description:  This function will build the compressed table, the mask table and
+ *-------------------------------------------------------------------------------------*/
+void	output_table ( MASK_TABLE* table, int output_file)
+{
+	int				size;
+	char			string[1024];
+	unsigned int	count;
+	unsigned int	index;
+	unsigned int	failed = 0;
+	unsigned char*	comp_row;
+	unsigned char*	mask_size;
+	unsigned char*	comp_size;
+
+	if (table->num_masks > UINT_MAX)
+		failed = 1;
+	else if (table->num_masks > USHRT_MAX)
+		mask_size = "unsigned int";
+	else if (table->num_masks > UCHAR_MAX)
+		mask_size = "unsigned short";
+	else
+		mask_size = "unsigned char";
+
+	if (table->num_comp_masks > UINT_MAX)
+		failed = 1;
+	else if (table->num_comp_masks > USHRT_MAX)
+		comp_size = "unsigned int";
+	else if (table->num_comp_masks > UCHAR_MAX)
+		comp_size = "unsigned short";
+	else
+		comp_size = "unsigned char";
+
+	/* dump the state table */
+	size = sprintf(string,"typedef struct\n{\t%s\tmask;\n\t%s\ttable;\n} LOOKUP_TABLE;\n\n",mask_size,comp_size);
+	write(output_file,string,size);
+
+	size = sprintf(string,"static LOOKUP_TABLE\tstate_table[%d] = {",table->num_rows);
+	write(output_file,string,size);
+
+	for (count=0;count<table->num_rows;count++)
+	{
+		if (count%16 == 0)
+		{
+			size = sprintf(string,"\n\t");
+			write(output_file,string,size);
+		}
+
+		size = sprintf(string,"{%2d,%2d}%c",table->row_map[count],table->comp_map[count],(count==table->num_rows-1)?'}':',');
+		write(output_file,string,size);
+	}
+
+	size = sprintf(string,";\n\n");
+	write(output_file,string,size);
+	
+	/* dump the symbol mask table */
+	if (table->entry_size == 1)
+	{
+		size = sprintf(string,"static unsigned int mask_table[%d] = {",table->num_masks);
+		write(output_file,string,size);
+
+		for (count=0;count<table->num_masks;count++)
+		{
+			if (count%8 == 0)
+			{
+				size = sprintf(string,"\n\t");
+				write(output_file,string,size);
+			}
+				
+			size = sprintf(string,"0x%08x%c",table->mask_array[count],(count==table->num_masks-1)?'}':',');
+			write(output_file,string,size);
+		}
+		size = sprintf(string,";\n\n");
+		write(output_file,string,size);
+	}
+	else
+	{
+		size = sprintf(string,"static unsigned int mask_table[%d][%d] = {",table->num_masks,table->entry_size);
+		write(output_file,string,size);
+
+		for (count=0;count<table->num_masks;count++)
+		{
+			size = sprintf(string,"\t{");
+			write(output_file,string,size);
+
+			for (index=0;index<table->map_size;index++)
+			{
+				size = sprintf(string,"0x%08x%c",table->mask_array[count*table->entry_size+index],(index==table->entry_size-1)?'}':',');
+				write(output_file,string,size);
+			}
+			size = sprintf(string,"%c\n",(count==table->num_masks-1)?'}':',');
+			write(output_file,string,size);
+		}
+		size = sprintf(string,";\n\n");
+		write(output_file,string,size);
+	}
+
+	/* dump the actual next state table */
+	size = sprintf(string,"static %s table[%d][%d] = {",comp_size,table->num_comp_masks,table->row_size);
+	write(output_file,string,size);
+
+	for (count=0;count<table->num_comp_masks;count++)
+	{
+		size = sprintf(string,"\n\t{");
+		write(output_file,string,size);
+
+		comp_row = &table->comp_table[count * table->row_size];
+			
+		size = sprintf(string,"0x%02x",comp_row[0]);
+		write(output_file,string,size);
+
+		for(index = 1; index <table->row_size; index++)
+		{
+			size = sprintf(string,",0x%02x",comp_row[index]);
+			write(output_file,string,size);
+		}
+
+		size = sprintf(string,"}%c",(count==table->num_comp_masks-1)?'}':',');
+		write(output_file,string,size);
+	}
+
+	size = sprintf(string,";\n");
+	write(output_file,string,size);
+}
+
 /*---  FUNCTION  ----------------------------------------------------------------------*
  *         Name:  build_output
  *  Description:  This function will write the array of data in a format that can be
@@ -67,6 +193,7 @@ void	build_output(	char* 			output_name,
 						unsigned int*	word_size, 
 						unsigned int	num_of_words,
 						unsigned int	ignore_case,
+						MASK_TABLE*		mask_table,
 						unsigned int	uncompressed_table)
 {
 	int	count;
@@ -122,37 +249,43 @@ void	build_output(	char* 			output_name,
 		write(out_file,"\n};\n\n",5);
 
 		/* Dont need the symbol table look-up for the uncompressed tables */
-		if (!uncompressed_table)
-		{
-			/* now write the symbol conversion table */
-			size = sprintf(string,"static signed char\tsymbol_table[%d] = ",ALPHABET_SIZE);
-			write(out_file,string,size);
-			write_group(out_file,look_uptable,ALPHABET_SIZE,"\t\t\t\t\t\t\t\t ",9);
-			write(out_file,";\n\n",3);
-		}
-
-		/* now write the look up tables */
-		size = sprintf(string,"static unsigned char\tstate_machine_table[%d][%d] = {",num_rows,num_symbols);
-		write(out_file,string,size);
-
-		for (count=0;count<(num_rows*num_symbols);count += num_symbols)
-		{
-			if (count == 0)
-				write(out_file,"\n\t\t\t\t\t\t\t\t",9);
-			else
-				write(out_file,",\n\t\t\t\t\t\t\t\t",10);
-
-			write_group(out_file,&table[count],num_symbols,"\t\t\t\t\t\t\t\t ",9);
-		}
-		write(out_file,"};\n",3);
-
-		write(out_file,out_file_start,out_file_start_size-1);
-		write(out_file,output_name,index);
-
 		if (uncompressed_table)
 		{
+	
+			/* now write the look up tables */
+			size = sprintf(string,"static unsigned char\tstate_machine_table[%d][%d] = {",num_rows,num_symbols);
+			write(out_file,string,size);
+
+			for (count=0;count<(num_rows*num_symbols);count += num_symbols)
+			{
+				if (count == 0)
+					write(out_file,"\n\t\t\t\t\t\t\t\t",9);
+				else
+					write(out_file,",\n\t\t\t\t\t\t\t\t",10);
+
+				write_group(out_file,&table[count],num_symbols,"\t\t\t\t\t\t\t\t ",9);
+			}
+			write(out_file,"};\n",3);
+
+			write(out_file,out_file_start,out_file_start_size-1);
+			write(out_file,output_name,index);
+			
 			write(out_file,out_file_uncompfunc,out_file_uncompfunc_size-1);
-		}else{
+		}
+		else
+		{
+			/* now write the symbol conversion table */
+			size = sprintf(string,"static signed char\tsymbol_table[%d] = \n\t",ALPHABET_SIZE);
+			write(out_file,string,size);
+			write_group(out_file,look_uptable,ALPHABET_SIZE,"\t ",2);
+			write(out_file,";\n\n",3);
+
+			/* write the rest of the output tables */
+			output_table(mask_table,out_file);
+
+			/* write the search function */
+			write(out_file,out_file_start,out_file_start_size-1);
+			write(out_file,output_name,index);
 			write(out_file,out_file_function,out_file_function_size-1);
 		}
 

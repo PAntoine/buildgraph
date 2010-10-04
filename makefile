@@ -14,7 +14,7 @@ buildgraph : $(OBJECTS)
 buildgraph.a: bg_utilities.o
 	@$(AR) -r buildgraph.a bg_utilities.o
 
-$(OBJECTS): build_graph.h
-	@echo --- $*
+.c.o: build_graph.h
+	@echo --- $* $%
 	$(CC) -c $*.c 
 

@@ -19,7 +19,7 @@
 #ifndef  __BUILD_GRAPH_H__
 #define  __BUILD_GRAPH_H__
 
-#define	__BG_VERSION__ "0.4"
+#define	__BG_VERSION__ "0.6"
 #define	ALPHABET_SIZE	(256)
 
 /*-----------------------------------------------------------------------------*
@@ -33,6 +33,21 @@ typedef struct tag_n_node
 	struct tag_n_node	*branches[ALPHABET_SIZE];
 } N_NODE;
 
+typedef struct 
+{
+	unsigned int	entry_size;
+	unsigned int	map_size;
+	unsigned int	row_size;
+	unsigned int	num_masks;
+	unsigned int	num_comp_masks;
+	unsigned int	num_rows;
+	unsigned int*	row_map;
+	unsigned int*	comp_map;
+	unsigned int*	mask_array;
+	unsigned int*	comp_mask_array;
+	unsigned char*	comp_table;
+
+} MASK_TABLE;
 
 /*-----------------------------------------------------------------------------*
  *  Function Protptypes.
@@ -47,6 +62,7 @@ void 			generate_naive_table (char* table,N_NODE* head_node,char** word,unsigned
 unsigned int	compress_table (char* table,char* look_uptable,char** compressed_table,unsigned int	num_branches,char** word,unsigned int* word_size, unsigned int num_of_words,unsigned int ignore_case);
 int				uncompressed_check_word(char* table,char* string,unsigned int ignore_case,char** word,unsigned int* word_size);
 int				compressed_check_word(char* compressed_table, char* symbol_table, unsigned int num_symbols, char* string, unsigned int ignore_case, char** word, unsigned int* word_size); 
+void			output_table ( MASK_TABLE* table, int output_file);
 void	build_output(	char* 			output_name,
 						char*			enum_prefix,
 						char* 			table,
@@ -57,7 +73,12 @@ void	build_output(	char* 			output_name,
 						unsigned int*	word_size, 
 						unsigned int	num_of_words,
 						unsigned int	ignore_case,
+						MASK_TABLE* 	mask_table,
 						unsigned int	uncompressed_table);
+
+MASK_TABLE*	build_mask_table ( unsigned char* table,unsigned int num_rows,unsigned int row_size);
+void	calculate_overlays (  unsigned char* table,unsigned int num_rows,unsigned int row_size, unsigned char** overlaid_table, unsigned int* overlaid_rows );
+
 
 #endif 
 

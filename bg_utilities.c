@@ -20,6 +20,10 @@
 
 #include "build_graph.h"
 #include <stdlib.h>
+#include <limits.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
 
 /*---  FUNCTION  ----------------------------------------------------------------------*
  *         Name:  count_words
@@ -145,6 +149,7 @@ unsigned int	prune_tree (N_NODE* head_node,char** word,unsigned int* word_size, 
 
 		for (letter=0;letter< word_size[count];letter++)
 		{
+			/* OK, only one item on the branch, we know it's a leaf node */
 			if (current->branches[word[count][letter]] != NULL && current->branches[word[count][letter]]->number_on_branch == 1)
 			{
 				break;
@@ -152,11 +157,13 @@ unsigned int	prune_tree (N_NODE* head_node,char** word,unsigned int* word_size, 
 
 			current = current->branches[word[count][letter]];
 		
+			/* give the branch a number */
 			if (current->enumeration == 0)
 			{
 				current->enumeration = item++;
 			}
 
+			/* cheap check to make sure the sub tree is not also a leaf */
 			if (current->number_on_branch == 1)
 			{
 				break;
@@ -475,3 +482,225 @@ void	decase_table (unsigned char* table,unsigned int num_rows,unsigned int row_s
 		}
 	}
 }
+
+/*---  FUNCTION  ----------------------------------------------------------------------*
+ *         Name:  build_mask_table
+ *  Description:  This function will build the compressed table, the mask table and
+ *                the compressed table that it requires to do the lookup.
+ *                The structure returned has all the data required to build the 
+ *                compressed output.
+ *-------------------------------------------------------------------------------------*/
+MASK_TABLE*	build_mask_table ( unsigned char* table,unsigned int num_rows,unsigned int row_size) 
+{
+	unsigned int	count;
+	unsigned int	kount;
+	unsigned int	xount;
+	unsigned int	index;
+	unsigned int	row_count;
+	unsigned int	result = 0;
+	unsigned int	map_size = (row_size + 31) / 32;	/* in dwords */
+	unsigned char*	row;
+	unsigned char*	comp_row;
+	MASK_TABLE*		mask_table;
+
+	mask_table = calloc(1,sizeof(MASK_TABLE));
+
+	mask_table->entry_size = map_size;
+	mask_table->num_rows = num_rows;
+	mask_table->row_size = row_size;
+	mask_table->num_masks = 0;
+	mask_table->num_comp_masks = 0;
+	mask_table->row_map = calloc(num_rows+1,sizeof(unsigned int));
+	mask_table->comp_map = calloc(num_rows+1,sizeof(unsigned int));
+	mask_table->comp_table = calloc(num_rows,row_size);
+	mask_table->mask_array = calloc(map_size*4,num_rows);	/* max size */
+	mask_table->comp_mask_array = calloc(map_size*4,num_rows); 	/* max size */
+
+	for (row_count=0;row_count<num_rows;row_count++)
+	{
+		printf("[%d]",row_count);
+		row = &table[row_count * row_size];
+
+		for(kount=0;kount<map_size;kount++)
+		{
+			mask_table->mask_array[((mask_table->num_masks)*map_size)+kount] = 0;
+		}
+
+		/* find the symbols that matter in this row */
+		for(count = 0; count < row_size; count++)
+		{
+			if (row[count] != 0)
+			{
+				mask_table->mask_array[((mask_table->num_masks)*map_size) + (count>>5)] |= (0x1 << (count & 0x1F));
+			}
+
+			printf("%02x ",row[count]);
+		}
+		printf("%08x %d\n",mask_table->mask_array[((mask_table->num_masks)*map_size)],mask_table->num_masks);
+
+		/* now check to see if this map already exists */
+		for (xount=0;xount<mask_table->num_masks;xount++)
+		{
+			for(kount=0;kount<map_size;kount++)
+			{
+				if (mask_table->mask_array[((mask_table->num_masks)*map_size)+kount] != mask_table->mask_array[xount*map_size+kount])
+				{
+					break;
+				}
+			}
+
+			if (kount == map_size)
+			{
+				/* found a match */
+				mask_table->row_map[row_count] = xount;
+				break;
+			}
+		}
+
+		/* check if it needs adding to the map table */
+		if (xount == mask_table->num_masks)
+		{
+			/* did not find a match */
+			mask_table->row_map[row_count] = mask_table->num_masks;
+			mask_table->num_masks++;
+		}
+	}
+
+	/* now compress the tables, use the masks against the actual rows */
+	for (count=0;count<num_rows;count++)
+	{
+		for (xount=0;xount<mask_table->num_comp_masks;xount++)
+		{
+			for(kount=0;kount<map_size;kount++)
+			{
+				if ((mask_table->mask_array[(mask_table->row_map[count]*map_size)+kount] & mask_table->comp_mask_array[xount*map_size+kount]) != 0)
+				{
+					break;
+				}
+			}
+
+			if (kount == map_size)
+			{
+				/* we have found a safe overlay */
+				for (kount=0;kount<map_size;kount++)
+				{
+					printf("%08x %08x",mask_table->comp_mask_array[(xount*map_size)+kount],mask_table->mask_array[mask_table->row_map[count]*map_size+kount]);
+					mask_table->comp_mask_array[(xount*map_size)+kount] |= mask_table->mask_array[mask_table->row_map[count]*map_size+kount];
+				}
+
+				printf("\n");
+
+				row = &table[count * row_size];
+				comp_row = &mask_table->comp_table[xount * row_size];
+
+				for(index = 0; index < row_size; index++)
+				{
+					if (row[index] != 0)
+					{
+						if (comp_row[index] != 0)
+							printf("error\n");
+
+						comp_row[index] = row[index];
+					}
+				}
+
+
+				mask_table->comp_map[count] = xount;
+				break;
+			}
+		}
+
+		if (xount == mask_table->num_comp_masks)
+		{
+			printf("add: %d %d\n",count,mask_table->num_comp_masks);
+			/* did not find one, need to add it to the end */
+			for (kount=0;kount<map_size;kount++)
+			{
+				printf("%08x %08x",mask_table->comp_mask_array[(xount*map_size)+kount],mask_table->mask_array[mask_table->row_map[count]*map_size+kount]);
+				mask_table->comp_mask_array[(xount*map_size)+kount] = mask_table->mask_array[mask_table->row_map[count]*map_size+kount];
+			}
+
+			mask_table->comp_map[count] = mask_table->num_comp_masks;
+			mask_table->num_comp_masks++;
+
+				row = &table[count * row_size];
+				comp_row = &mask_table->comp_table[xount * row_size];
+
+				for(index = 0; index < row_size; index++)
+				{
+					if (row[index] != 0)
+					{
+						if (comp_row[index] != 0)
+							printf("%d: error\n",index);
+
+						comp_row[index] = row[index];
+					}
+				}
+
+		}
+	}
+
+	/* DEBUG: dump the mast table to see if it makes sense */
+	for (xount=0;xount<mask_table->num_masks;xount++)
+	{
+		printf("%03d: ",xount);
+		for(kount=0;kount<map_size;kount++)
+		{
+			printf("%08x ",mask_table->mask_array[xount*map_size+kount]);
+		}
+		printf("\n");
+	}
+
+	/* DEBUG: dump the mast table to see if it makes sense */
+	printf("COMPS:\n");
+	for (xount=0;xount<mask_table->num_comp_masks;xount++)
+	{
+		printf("%03d: ",xount);
+		for(kount=0;kount<map_size;kount++)
+		{
+			printf("%08x ",mask_table->comp_mask_array[xount*map_size+kount]);
+		}
+		printf("\n");
+	}
+
+	/* DEBUG: dump the mast table to see if it makes sense */
+	printf("LOOKUP Table:\n");
+	for (count=0;count<num_rows;count++)
+	{
+		comp_row = &mask_table->comp_table[mask_table->comp_map[count] * row_size];
+		printf("[%3d] %3d %3d ",count,mask_table->row_map[count],mask_table->comp_map[count]);
+		for(index = 0; index < row_size; index++)
+		{
+			printf("%02x ",comp_row[index]);
+		}
+		printf("\n");
+	}
+
+	/* DEBUG: test the table matches the original row */
+	for (row_count=0;row_count<num_rows;row_count++)
+	{
+		row = &table[row_count * row_size];
+		comp_row = &mask_table->comp_table[mask_table->comp_map[row_count] * row_size];
+
+		for(count = 0; count < row_size; count++)
+		{
+			if ((mask_table->mask_array[mask_table->row_map[row_count]] & (0x1 << (count & 0x1F))) == 0)
+			{
+				if (row[count] != 0)
+				{
+					printf("failed\n");
+					break;
+				}
+			}
+			else if ((row[count] != comp_row[count]))
+			{
+				printf("[%3d] failed did not match @ %d\n",row_count,count);
+				break;
+			}
+		}
+	}
+
+	return mask_table;
+}
+
+

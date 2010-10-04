@@ -34,11 +34,17 @@
  *                                 arrays and check value to signed or the table
  *                                 just does not work.
  * P.Antoine   04/09/2010 0.5      Minor tweaks to the code. Also, std make file.
+ * P.Antoine   25/10/2010 0.6      Thought of a way of reducing the stupid amount
+ *                                 of 0's in the table. But using a validation mask
+ *                                 and then using the free space in the table as a
+ *                                 lookup, if the tables don't clash. Will be able
+ *                                 make the table considerably smaller.
  *-----------------------------------------------------------------------------}}}*
  * Peter Antoine - 9th March 2009.
  * Copyright 2009 (c) Peter Antoine.
  *--------------------------------------------------------------------------------*/
-#ifdef win32
+
+#if 0
 #include <windows.h>
 
 #include <io.h>
@@ -79,6 +85,7 @@ int	main(int argc,char *argv[])
 	unsigned int	total_data;
 	unsigned int	*word_size;
 	N_NODE			head_node;
+	MASK_TABLE*		mask_table;
 
 	char	*enum_prefix = "TST_";
 	char	output_name[256];
@@ -244,25 +251,24 @@ int	main(int argc,char *argv[])
 		if (!uncompressed_table)
 		{
 			num_symbols = compress_table(table,look_uptable,&compressed_table,item,word,word_size,num_of_words,ignore_case);
-		}
 
-		if (uncompressed_table)
+			mask_table = build_mask_table(compressed_table,item,num_symbols);
+			build_output(output_name,enum_prefix,compressed_table,look_uptable,item,num_symbols,word,word_size,num_of_words,ignore_case,mask_table,uncompressed_table);
+		}
+		else
 		{
 			if (ignore_case)
 			{
 				decase_table(table,item,ALPHABET_SIZE);
 			}
-			build_output(output_name,enum_prefix,table,look_uptable,item,ALPHABET_SIZE,word,word_size,num_of_words,ignore_case,uncompressed_table);
-		}else{
-			build_output(output_name,enum_prefix,compressed_table,look_uptable,item,num_symbols,word,word_size,num_of_words,ignore_case,uncompressed_table);
+			build_output(output_name,enum_prefix,table,look_uptable,item,ALPHABET_SIZE,word,word_size,num_of_words,ignore_case,NULL,uncompressed_table);
 		}
 
+		printf("freeing the tree\n");
 		/* release all the memory we have used */
 		free_tree(&head_node);
 
-		free(data);
-		free(word);
-		free(word_size);
+		printf("freeing the compretree\n");
 
 		if (compressed_table != NULL)
 		{
