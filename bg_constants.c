@@ -37,7 +37,7 @@ char	out_file_header[] = "/*----------------------------------------------------
 							" *   **** This code can be used however you like, no claims whatsoever are ****\n"
 							" *   **** placed on the auto-generated code or data, or on the code that   ****\n"
 							" *   **** uses the that code or data.                                      ****\n"
-							" *   **** Or, to paraphrase \"Fill you're boots\".                           ****\n"
+							" *   **** Or, to paraphrase \"Fill your boots\".                             ****\n"
 							" *--------------------------------------------------------------------------------*/\n\n"; 
 
 char	out_file_start[]   ="\n\nint	";

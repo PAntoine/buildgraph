@@ -38,7 +38,9 @@
  *                                 of 0's in the table. But using a validation mask
  *                                 and then using the free space in the table as a
  *                                 lookup, if the tables don't clash. Will be able
- *                                 make the table considerably smaller.
+ *                                 make the table considerably smaller. The small
+ *                                 amount of testing shows at least 50% saving,
+ *                                 have seen 75% (inc. the extra look-up code).
  *-----------------------------------------------------------------------------}}}*
  * Peter Antoine - 9th March 2009.
  * Copyright 2009 (c) Peter Antoine.
