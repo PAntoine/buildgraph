@@ -15,14 +15,26 @@ PS: I know its a tree not a graph, but I thought that a graph was the
 answer, then realised it was a world of pain for little memory saving
 so we now have a tree.
 
-
-
 Usage:
 ------
 
-buildgraph <filename> [<output_name>] [-i] [-u] [-p <some_string>]
+buildgraph <filename> [<output_file_prefix_name>] [-q] [-i] [-u] [-p <some_string>] [-h <header_file_directory>]
+           -q     Quiet. Only report errors.
+		   -h     The directory to put the header file in (if different from the source).
            -i     The look-up will ignore the case of the word input.
            -u     The uncompressed table will be exported.
            -p     The \"TST_\" for the enum name will be replaced with <some_string>.
+
+KNOWN ERRORS:
+-------------
+I have seen it fail to build a valid table with less than 4 items and not handle look-up correctly with less
+than 8. I assume this is due to the masks used in the new compression step. If you are using this for less
+that 8 items, you are touched as it is a big overhead for that few items.
+
+Other Things to Do:
+-------------------
+There is a further compression. After all the pruning has been done some of the leaf symbols are not used to
+the symbol table can be made smaller by checking if they are used within the symbol table lookup. If they are
+not used then remove them from the table and make the whole table smaller.
 
 

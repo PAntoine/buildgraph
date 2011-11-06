@@ -185,6 +185,7 @@ void	output_table ( MASK_TABLE* table, int output_file)
  *  			  compiled by a C compiler.
  *-------------------------------------------------------------------------------------*/
 void	build_output(	char* 			output_name,
+						char*			header_dir,
 						char*			enum_prefix,
 						char* 			table,
 						char*			look_uptable,
@@ -204,10 +205,9 @@ void	build_output(	char* 			output_name,
 	char	*base;
 	char	uppercase[255];
 	char	lowercase[255];
-	char	*outfile_name;
+	char	outfile_name[255];
 
 	file_dot = strlen(output_name);
-	outfile_name = malloc(file_dot + 3);
 	memcpy(outfile_name,output_name,file_dot);
 
 	outfile_name[file_dot] = '.';
@@ -306,10 +306,23 @@ void	build_output(	char* 			output_name,
 		close(out_file);
 	}
 
-	outfile_name[file_dot] = '.';
-	outfile_name[file_dot+1] = 'h';
-	outfile_name[file_dot+2] = '\0';
-
+	if (header_dir == NULL)
+	{
+		outfile_name[file_dot] = '.';
+		outfile_name[file_dot+1] = 'h';
+		outfile_name[file_dot+2] = '\0';
+	}
+	else
+	{
+		file_dot = strlen(header_dir);
+		memcpy(outfile_name,header_dir,file_dot);
+		memcpy(&outfile_name[file_dot],lowercase,index);
+	
+		outfile_name[file_dot+index  ] = '.';
+		outfile_name[file_dot+index+1] = 'h';
+		outfile_name[file_dot+index+2] = '\0';
+	}
+		
 	out_file = open(outfile_name,O_WRONLY|O_CREAT|O_TRUNC,S_IWRITE|S_IREAD);
 
 	if (out_file != -1)
@@ -359,8 +372,6 @@ void	build_output(	char* 			output_name,
 		write(out_file,"\n#endif\n\n",sizeof("#endif\n\n")-1);
 		close(out_file);
 	}
-
-	free(outfile_name);
 }
 
 /*---  FUNCTION  ----------------------------------------------------------------------*

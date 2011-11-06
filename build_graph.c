@@ -44,6 +44,7 @@
  * P.Antoine   06/11/2011 0.7      Fixed the way that the input filename is used.
  *                                 Also added "-q" so the thing is quiet and can
  *                                 be used in builds.
+ * P.Antoine   06/11/2011 0.8      Added -h and made some error reporting better.
  *-----------------------------------------------------------------------------}}}*
  * Peter Antoine - 9th March 2009.
  * Copyright 2009 (c) Peter Antoine.
@@ -84,6 +85,7 @@ int	main(int argc,char *argv[])
 	int ignore_case = 0;
 	int enum_pre_size = 4;
 	int have_filename = 0;
+	int have_output_name = 0;
 	int uncompressed_table = 0;
 	unsigned int	num_of_words;
 	unsigned int	data_read;
@@ -94,14 +96,20 @@ int	main(int argc,char *argv[])
 	MASK_TABLE*		mask_table;
 
 	char	*enum_prefix = "TST_";
+	char	*header_dir = NULL;
 	char	output_name[256];
 	char	infile_name[256];
 	char	**word;
 	char	*data;
 	char	*table;
+	char	*error_string;
+	char	*param_string;
 	char	*compressed_table = NULL;
 
 	memcpy(output_name,"output",sizeof("output"));
+
+	error_string = "";
+	param_string = "";
 
 	output_name[0] = '\0';
 	infile_name[0] = '\0';
@@ -131,6 +139,23 @@ int	main(int argc,char *argv[])
 							uncompressed_table = 1;
 							break;
 
+					case 'h':	/* header directory */
+							if (argv[start][2] != '\0')
+							{
+								header_dir = &argv[start][2];
+							}
+							else if (((start + 1) < argc) && argv[start+1][0] != '-')
+							{
+								start++;
+								header_dir = argv[start];
+							}
+							else
+							{
+								error_string = "-h requires a directory name \n";
+								failed = 1;
+							}
+							break;
+
 					case 'p':	/* enum prefix */
 							if (argv[start][2] != '\0')
 							{
@@ -145,7 +170,7 @@ int	main(int argc,char *argv[])
 							}
 							else
 							{
-								printf("-p requires a prefix i.e. \"-pBGL_\" or \"-p BGL_\"\n");
+								error_string = "p requires a prefix i.e. \"-pBGL_\" or \"-p BGL_\"\n";
 								failed = 1;
 							}
 							break;
@@ -156,14 +181,15 @@ int	main(int argc,char *argv[])
 
 					default:
 							failed = 1;
-							printf("Unknown parameter\n");
+							error_string = "Unknown parameter\n";
 				}		
 
 			}else{
-				/* this should be poisitional parameters <input filename><output filename> */
+				/* this should be positional parameters <input filename><output filename> */
 				if (have_filename)
 				{
 					strncpy(output_name,argv[start],256);
+					have_output_name = 1;
 				}else{
 					strncpy(infile_name,argv[start],256);
 					have_filename = 1;
@@ -173,24 +199,31 @@ int	main(int argc,char *argv[])
 			start++;
 		}
 		while(start < argc);
+	}
 
-		if ((infile = open(infile_name,O_RDONLY)) == -1)
+	if (have_filename && (infile = open(infile_name,O_RDONLY)) == -1)
+	{
+		error_string = "Failed to open file: %s \n";
+		param_string = infile_name;
+		failed = 1;
+	}
+	else
+	{
+		/* read in the list of words to calculate the table for */
+		file_size = lseek(infile,0,SEEK_END);
+		lseek(infile,0,SEEK_SET);
+
+		if (file_size == 0)
 		{
-			printf("Failed to open file: %s \n",infile_name);
+			error_string = "I think the input file is empty, so exiting.\n";
 			failed = 1;
 		}
-		else
-		{
-			/* read in the list of words to calculate the table for */
-			file_size = lseek(infile,0,SEEK_END);
-			lseek(infile,0,SEEK_SET);
+	}
 
-			if (file_size == 0)
-			{
-				printf("I think the file is empty, so exiting.\n");
-				failed = 1;
-			}
-		}
+	if (!have_output_name)
+	{
+		error_string = "Must have output file name prefix\n";
+		failed = 1;
 	}
 		
 	if (!failed)
@@ -231,8 +264,9 @@ int	main(int argc,char *argv[])
 		word 		= (char**) malloc((sizeof(char*) * num_of_words));
 		word_size	= (unsigned int*) malloc(sizeof(unsigned int)*num_of_words);
 
-		if (word == NULL || word_size == NULL)
+		if (word == NULL || word_size == NULL || num_of_words < 8)
 		{
+			error_string = "not enough words in the file, must be more than 8\n";
 			failed = 1;
 		}
 		else
@@ -248,9 +282,11 @@ int	main(int argc,char *argv[])
 		printf( "      build graph " __BG_VERSION__ "\n"
 				" Copyright (c) 2009-2011 Peter Antoine\n"
 				"        All rights reserved. \n\n");
-		printf("Usage:  %s <filename> [<prefix_for_output_filenames>] [-i] [-u] [-p <some_string>]\n",argv[0]);
+		printf(error_string,param_string);
+		printf("Usage:  %s <filename> [<prefix_for_output_filenames>] [-i] [-u] [-p <some_string>] [-h <directory>]\n",argv[0]);
 		printf("           -i     The look-up will ignore the case of the word input.\n\n");
 		printf("           -u     The uncompressed table will be exported.\n\n");
+		printf("           -h     where to put the header file (if different from the source) .\n\n");
 		printf("           -q     Only prints errors.\n\n");
 		printf("           -p     Prefix for the enum in the include file.\n\n");
 
@@ -274,7 +310,7 @@ int	main(int argc,char *argv[])
 			num_symbols = compress_table(table,look_uptable,&compressed_table,item,word,word_size,num_of_words,ignore_case);
 
 			mask_table = build_mask_table(compressed_table,item,num_symbols);
-			build_output(output_name,enum_prefix,compressed_table,look_uptable,item,num_symbols,word,word_size,num_of_words,ignore_case,mask_table,uncompressed_table);
+			build_output(output_name,header_dir,enum_prefix,compressed_table,look_uptable,item,num_symbols,word,word_size,num_of_words,ignore_case,mask_table,uncompressed_table);
 		}
 		else
 		{
@@ -282,7 +318,7 @@ int	main(int argc,char *argv[])
 			{
 				decase_table(table,item,ALPHABET_SIZE);
 			}
-			build_output(output_name,enum_prefix,table,look_uptable,item,ALPHABET_SIZE,word,word_size,num_of_words,ignore_case,NULL,uncompressed_table);
+			build_output(output_name,header_dir,enum_prefix,table,look_uptable,item,ALPHABET_SIZE,word,word_size,num_of_words,ignore_case,NULL,uncompressed_table);
 		}
 
 		/* release all the memory we have used */

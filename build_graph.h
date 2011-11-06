@@ -19,7 +19,7 @@
 #ifndef  __BUILD_GRAPH_H__
 #define  __BUILD_GRAPH_H__
 
-#define	__BG_VERSION__ "0.7"
+#define	__BG_VERSION__ "0.8"
 #define	ALPHABET_SIZE	(256)
 
 /*-----------------------------------------------------------------------------*
@@ -64,6 +64,7 @@ int				uncompressed_check_word(char* table,char* string,unsigned int ignore_case
 int				compressed_check_word(char* compressed_table, char* symbol_table, unsigned int num_symbols, char* string, unsigned int ignore_case, char** word, unsigned int* word_size); 
 void			output_table ( MASK_TABLE* table, int output_file);
 void	build_output(	char* 			output_name,
+						char*			header_dir,
 						char*			enum_prefix,
 						char* 			table,
 						char*			look_uptable,

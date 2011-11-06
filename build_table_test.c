@@ -12,7 +12,7 @@ main()
 		if (count != (res = output_check_word(output_table[count].name)))
 		{
 			num_failed++;
-			printf("Failed! %d %d\n",offset,res);
+			printf("Failed! %d %d (item: %d name: %s)\n",offset,res,count,output_table[count].name);
 		}
 	}
 
