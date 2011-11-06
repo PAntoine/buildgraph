@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <memory.h>
 #include <limits.h>
+#include <libgen.h>
 #include "build_graph.h"
 
 /*-----------------------------------------------------------------------------*
@@ -198,29 +199,30 @@ void	build_output(	char* 			output_name,
 {
 	int	count;
 	int index;
+	int file_dot;
 	int out_file;
-	char	*uppercase;
+	char	*base;
+	char	uppercase[255];
+	char	lowercase[255];
 	char	*outfile_name;
 
-	printf("Now generating output file.\n");
+	file_dot = strlen(output_name);
+	outfile_name = malloc(file_dot + 3);
+	memcpy(outfile_name,output_name,file_dot);
 
-	index = strlen(output_name);
-	outfile_name = malloc(index + 3);
-	memcpy(outfile_name,output_name,index);
+	outfile_name[file_dot] = '.';
+	outfile_name[file_dot+1] = 'c';
+	outfile_name[file_dot+2] = '\0';
 
-	outfile_name[index] = '.';
-	outfile_name[index+1] = 'c';
-	outfile_name[index+2] = '\0';
+	base = basename(output_name);
 
-	uppercase = malloc(index+1);
-
-	for (count=0;count<index;count++)
+	for (index=0;base[index] != '\0' && index < 255;index++)
 	{
-		uppercase[count] = toupper(outfile_name[count]);
+		lowercase[index] = base[index];
+		uppercase[index] = toupper(base[index]);
 	}
-	uppercase[count] = '\0';
-
-	printf("===> %s\n",outfile_name);
+	lowercase[index] = '\0';
+	uppercase[index] = '\0';
 
 	out_file = open(outfile_name,O_WRONLY|O_CREAT|O_TRUNC,S_IWRITE|S_IREAD);
 
@@ -231,11 +233,11 @@ void	build_output(	char* 			output_name,
 
 		/* write the file header */
 		write(out_file,out_file_header,out_file_header_size-1);
-		size = sprintf(string,"#include \"%s.h\"\n\n",output_name);
+		size = sprintf(string,"#include \"%s.h\"\n\n",lowercase);
 		write(out_file,string,size);
 
 		/* Write out the list of strings */
-		size = sprintf(string,"%s_STRING_TABLE\t%s_table[%d] = {\n",uppercase,output_name,num_of_words);
+		size = sprintf(string,"%s_STRING_TABLE\t%s_table[%d] = {\n",uppercase,lowercase,num_of_words);
 		write(out_file,string,size);
 			
 		size = sprintf(string,"\t\t{\"%s\",%d}",word[0],word_size[0]);
@@ -268,7 +270,7 @@ void	build_output(	char* 			output_name,
 			write(out_file,"};\n",3);
 
 			write(out_file,out_file_start,out_file_start_size-1);
-			write(out_file,output_name,index);
+			write(out_file,lowercase,index);
 			
 			write(out_file,out_file_uncompfunc,out_file_uncompfunc_size-1);
 		}
@@ -285,30 +287,28 @@ void	build_output(	char* 			output_name,
 
 			/* write the search function */
 			write(out_file,out_file_start,out_file_start_size-1);
-			write(out_file,output_name,index);
+			write(out_file,lowercase,index);
 			write(out_file,out_file_function,out_file_function_size-1);
 		}
 
 		if (ignore_case)
 		{
-			size = sprintf(string,ignore_case_compare,output_name);
+			size = sprintf(string,ignore_case_compare,lowercase);
 		}else{
-			size = sprintf(string,case_compare,output_name);
+			size = sprintf(string,case_compare,lowercase);
 		}
 		write(out_file,string,size);
 
-		write(out_file,output_name,index);
+		write(out_file,lowercase,index);
 
 		write(out_file,case_compare_end,case_compare_end_size-1);
 
 		close(out_file);
 	}
 
-	outfile_name[index] = '.';
-	outfile_name[index+1] = 'h';
-	outfile_name[index+2] = '\0';
-
-	printf("===> %s\n",outfile_name);
+	outfile_name[file_dot] = '.';
+	outfile_name[file_dot+1] = 'h';
+	outfile_name[file_dot+2] = '\0';
 
 	out_file = open(outfile_name,O_WRONLY|O_CREAT|O_TRUNC,S_IWRITE|S_IREAD);
 
@@ -353,14 +353,13 @@ void	build_output(	char* 			output_name,
 		size = sprintf(	string,"\n} %s%s;\n\n",enum_prefix,uppercase);
 		write(out_file,string,size);
 
-		size = sprintf(	string,"int\t%s_check_word(unsigned char* word);\n",output_name);
+		size = sprintf(	string,"int\t%s_check_word(unsigned char* word);\n",lowercase);
 		write(out_file,string,size);
 
 		write(out_file,"\n#endif\n\n",sizeof("#endif\n\n")-1);
 		close(out_file);
 	}
 
-	free(uppercase);
 	free(outfile_name);
 }
 

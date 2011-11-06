@@ -19,7 +19,7 @@
 #ifndef  __BUILD_GRAPH_H__
 #define  __BUILD_GRAPH_H__
 
-#define	__BG_VERSION__ "0.6"
+#define	__BG_VERSION__ "0.7"
 #define	ALPHABET_SIZE	(256)
 
 /*-----------------------------------------------------------------------------*
@@ -55,7 +55,7 @@ typedef struct
 void			decase_table (unsigned char* table,unsigned int num_rows,unsigned int row_size);
 unsigned int	count_words (char* buffer, unsigned int buffer_size);
 void			write_group(int out_file,char* buffer,unsigned int size,char* line_prefix,unsigned int prefix_size);
-void 			build_dictionary (unsigned int num_of_words,char *buffer, unsigned int buffer_size,char** word,unsigned int* word_size,int ignore_case);
+void 			build_dictionary (unsigned int num_of_words,char *buffer, unsigned int buffer_size,char** word,unsigned int* word_size,int ignore_case,int quiet);
 void 			build_naive_tree (N_NODE* head_node,char** word,unsigned int* word_size, unsigned int num_of_words);
 unsigned int	prune_tree (N_NODE* head_node,char** word,unsigned int* word_size, unsigned int num_of_words);
 void 			generate_naive_table (char* table,N_NODE* head_node,char** word,unsigned int* word_size, unsigned int num_of_words);

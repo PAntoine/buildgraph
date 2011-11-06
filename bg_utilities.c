@@ -57,7 +57,7 @@ unsigned int	count_words (char* buffer, unsigned int buffer_size)
  *                of words from that data. But, the data is not really words but
  *                line-ended symbols.
  *-------------------------------------------------------------------------------------*/
-void build_dictionary (unsigned int num_of_words,char *data, unsigned int buffer_size,char** word,unsigned int* word_size,int ignore_case)
+void build_dictionary (unsigned int num_of_words,char *data, unsigned int buffer_size,char** word,unsigned int* word_size,int ignore_case,int quiet)
 {
 	int	count;
 	int	size;
@@ -91,10 +91,13 @@ void build_dictionary (unsigned int num_of_words,char *data, unsigned int buffer
 		}
 	}
 
-	printf("About to build a parse tree for the following words:\n");
-	for (count = 0;count < num_of_words;count++)
+	if (!quiet)
 	{
-		printf("word[%3d] %s size: %d\n",count,word[count],word_size[count]);
+		printf("About to build a parse tree for the following words:\n");
+		for (count = 0;count < num_of_words;count++)
+		{
+			printf("word[%3d] %s size: %d\n",count,word[count],word_size[count]);
+		}
 	}
 }
 

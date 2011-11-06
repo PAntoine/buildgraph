@@ -41,6 +41,9 @@
  *                                 make the table considerably smaller. The small
  *                                 amount of testing shows at least 50% saving,
  *                                 have seen 75% (inc. the extra look-up code).
+ * P.Antoine   06/11/2011 0.7      Fixed the way that the input filename is used.
+ *                                 Also added "-q" so the thing is quiet and can
+ *                                 be used in builds.
  *-----------------------------------------------------------------------------}}}*
  * Peter Antoine - 9th March 2009.
  * Copyright 2009 (c) Peter Antoine.
@@ -76,6 +79,7 @@ int	main(int argc,char *argv[])
 	int failed = 0;
 	int result = 0;
 	int infile;
+	int quiet = 0;
 	int num_symbols = 0;
 	int ignore_case = 0;
 	int enum_pre_size = 4;
@@ -97,11 +101,10 @@ int	main(int argc,char *argv[])
 	char	*table;
 	char	*compressed_table = NULL;
 
-	printf( "\n      build graph " __BG_VERSION__ "\n"
-			"Copyright (c) 2009 Peter Antoine\n"
-      		"      All rights reserved. \n\n\n");
-
 	memcpy(output_name,"output",sizeof("output"));
+
+	output_name[0] = '\0';
+	infile_name[0] = '\0';
 
 	if (argc < 2)
 	{
@@ -118,6 +121,11 @@ int	main(int argc,char *argv[])
 					case 'i':	/* ignore case independent */
 							ignore_case = 1;
 							break;
+					
+					case 'q':	/* quiet - suppress non error outputs */
+							quiet = 1;
+							break;
+
 
 					case 'u':	/* produce the uncompressed table */
 							uncompressed_table = 1;
@@ -152,7 +160,7 @@ int	main(int argc,char *argv[])
 				}		
 
 			}else{
-				/* this should be poisitional parameters <filename><prog_num><old_pid><new_pid> */
+				/* this should be poisitional parameters <input filename><output filename> */
 				if (have_filename)
 				{
 					strncpy(output_name,argv[start],256);
@@ -184,17 +192,24 @@ int	main(int argc,char *argv[])
 			}
 		}
 	}
-
+		
 	if (!failed)
 	{
-		if (ignore_case)
+		if (!quiet)
 		{
-			printf("IGNORE CASE turned on. The table will be case independent.\n\n");
-		}
+			printf( "\n      build graph " __BG_VERSION__ "\n"
+					"Copyright (c) 2009-2011 Peter Antoine\n"
+					"        All rights reserved. \n\n");
+			
+			if (ignore_case)
+			{
+				printf("IGNORE CASE turned on. The table will be case independent.\n\n");
+			}
 
-		if (uncompressed_table)
-		{
-			printf("UNCOMPRESSED TABLES are turn on. The tables produced will be the uncompressed version.\n\n");
+			if (uncompressed_table)
+			{
+				printf("UNCOMPRESSED TABLES are turn on. The tables produced will be the uncompressed version.\n\n");
+			}
 		}
 
 		/* allocate a multiple of 1k */
@@ -222,7 +237,7 @@ int	main(int argc,char *argv[])
 		}
 		else
 		{
-			build_dictionary(num_of_words,data,total_data,word,word_size,ignore_case);
+			build_dictionary(num_of_words,data,total_data,word,word_size,ignore_case,quiet);
 		}
 
 		close(infile);
@@ -230,10 +245,14 @@ int	main(int argc,char *argv[])
 
 	if (failed)
 	{
-		printf("Usage:  %s <filename> [<output_name>] [-i] [-u] [-p <some_string>]\n",argv[0]);
+		printf( "      build graph " __BG_VERSION__ "\n"
+				" Copyright (c) 2009-2011 Peter Antoine\n"
+				"        All rights reserved. \n\n");
+		printf("Usage:  %s <filename> [<prefix_for_output_filenames>] [-i] [-u] [-p <some_string>]\n",argv[0]);
 		printf("           -i     The look-up will ignore the case of the word input.\n\n");
 		printf("           -u     The uncompressed table will be exported.\n\n");
-		printf("           -p     The \"TST_\" for the enum name will be replaced with <some_string>.\n\n");
+		printf("           -q     Only prints errors.\n\n");
+		printf("           -p     Prefix for the enum in the include file.\n\n");
 
 		result = 1;
 	}
@@ -266,11 +285,8 @@ int	main(int argc,char *argv[])
 			build_output(output_name,enum_prefix,table,look_uptable,item,ALPHABET_SIZE,word,word_size,num_of_words,ignore_case,NULL,uncompressed_table);
 		}
 
-		printf("freeing the tree\n");
 		/* release all the memory we have used */
 		free_tree(&head_node);
-
-		printf("freeing the compretree\n");
 
 		if (compressed_table != NULL)
 		{
