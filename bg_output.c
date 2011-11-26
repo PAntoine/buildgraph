@@ -38,6 +38,8 @@ extern char	case_compare[];
 extern char	case_compare_end[];
 extern char	state_machine_table[];
 extern char	hex_char[];
+extern char out_file_len_pro[];
+extern char out_file_len_fun[];
 extern char	out_file_header[];
 extern char	out_file_uncompfunc[];
 
@@ -52,7 +54,6 @@ extern unsigned int	case_compare_size;
 extern unsigned int	case_compare_end_size;
 extern unsigned int	state_machine_table_size;
 extern unsigned int out_file_uncompfunc_size;
-
 
 /*---  FUNCTION  ----------------------------------------------------------------------*
  *         Name:  output_table
@@ -285,6 +286,10 @@ void	build_output(	char* 			output_name,
 			/* write the rest of the output tables */
 			output_table(mask_table,out_file);
 
+			/* write the name length lookup function */
+			size = sprintf(string,out_file_len_fun,lowercase,lowercase);
+			write(out_file,string,size);
+
 			/* write the search function */
 			write(out_file,out_file_start,out_file_start_size-1);
 			write(out_file,lowercase,index);
@@ -364,6 +369,9 @@ void	build_output(	char* 			output_name,
 		write(out_file,string,size);
 
 		size = sprintf(	string,"\n} %s%s;\n\n",enum_prefix,uppercase);
+		write(out_file,string,size);
+
+		size = sprintf(	string,out_file_len_pro,lowercase);
 		write(out_file,string,size);
 
 		size = sprintf(	string,"int\t%s_check_word(unsigned char* word);\n",lowercase);

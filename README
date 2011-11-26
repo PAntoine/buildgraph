@@ -37,4 +37,13 @@ There is a further compression. After all the pruning has been done some of the 
 the symbol table can be made smaller by checking if they are used within the symbol table lookup. If they are
 not used then remove them from the table and make the whole table smaller.
 
+Ahhh.....
+---------
+30 years of computing and I did not know that uppercase ASCII and lower case are different by one bit in the
+high nibble. I can now make this a lot quicker and the table smaller for case independent lookups by using
+this simple fact. So to optimise the whole thing remove the dup symbols and use the bit twiddle during the
+search. I assume this is what tolower() does, but it means only one pass over the string saving a loop each
+search.
+
+(PS: hopefully I did know this once and have forgotten this fact.)
 

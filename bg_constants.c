@@ -40,6 +40,11 @@ char	out_file_header[] = "/*----------------------------------------------------
 							" *   **** Or, to paraphrase \"Fill your boots\".                             ****\n"
 							" *--------------------------------------------------------------------------------*/\n\n"; 
 
+char	out_file_len_pro[]="unsigned int %s_get_length(int word);\n";
+char	out_file_len_fun[]="\nunsigned int %s_get_length(int word)\n"
+							"{\n"
+							"\treturn %s_table[word].length;\n"
+							"}";
 char	out_file_start[]   ="\n\nint	";
 char	out_file_function[]="_check_word(unsigned char* word)\n"
 							"{\n""\tsigned char		line = 0;\n"
