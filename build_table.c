@@ -1,4 +1,4 @@
-static const char encoding_string[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const char encoding_string[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
 
 main()
 {
@@ -8,9 +8,9 @@ main()
 	for (count=0;count<255;count++)
 		table[count] = 0x00;
 
-	for (count=0;count<64;count++)
+	for (count=0;count<sizeof(encoding_string);count++)
 	{
-		table[encoding_string[count]] = count;
+		table[encoding_string[count]] = 1;
 		printf("%c = %d\n",encoding_string[count],count);
 	}
 

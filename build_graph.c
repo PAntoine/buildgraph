@@ -45,6 +45,7 @@
  *                                 Also added "-q" so the thing is quiet and can
  *                                 be used in builds.
  * P.Antoine   06/11/2011 0.8      Added -h and made some error reporting better.
+ * P.Antoine   10/11/2011 0.9      Added a function to report the string length.
  *-----------------------------------------------------------------------------}}}*
  * Peter Antoine - 9th March 2009.
  * Copyright 2009 (c) Peter Antoine.
